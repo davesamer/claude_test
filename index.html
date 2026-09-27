@@ -1,0 +1,509 @@
+<title>Daily Water Planner</title>
+<meta name="description" content="Estimate how much water to drink today from your weight, age, activity, weather and life stage.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+  :root {
+    --bg: #eef3f4;
+    --surface: #ffffff;
+    --ink: #102a36;
+    --muted: #4f6772;
+    --line: #cfdde1;
+    --accent: #0e7c92;
+    --accent-soft: #d3ecf1;
+    --water: #3fb3cc;
+    --water-deep: #1f8aa3;
+    --warn: #9a5b00;
+    --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0b171c;
+      --surface: #12232a;
+      --ink: #e3eff2;
+      --muted: #97b0b8;
+      --line: #25404a;
+      --accent: #5cc8de;
+      --accent-soft: #173a44;
+      --water: #3aa9c2;
+      --water-deep: #6fd3e8;
+      --warn: #f0b35a;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0b171c;
+    --surface: #12232a;
+    --ink: #e3eff2;
+    --muted: #97b0b8;
+    --line: #25404a;
+    --accent: #5cc8de;
+    --accent-soft: #173a44;
+    --water: #3aa9c2;
+    --water-deep: #6fd3e8;
+    --warn: #f0b35a;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.5;
+    padding: 0 16px;
+  }
+  .wrap {
+    max-width: 960px;
+    margin: 0 auto;
+    padding-block: 40px 56px;
+    display: grid;
+    gap: 28px;
+  }
+  header h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(2rem, 5vw, 2.8rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+  header p { margin: 0; color: var(--muted); max-width: 60ch; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+
+  form {
+    display: grid;
+    gap: 20px;
+  }
+  fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; min-width: 0; }
+  legend, label.lbl {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    padding: 0;
+    margin-bottom: 6px;
+  }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .num {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    overflow: hidden;
+    flex: 1 1 140px;
+  }
+  .num input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: 1.15rem;
+    padding: 10px 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .num input:focus { outline: none; }
+  .num:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .unit {
+    display: flex; align-items: center; padding: 0 12px;
+    color: var(--muted); font-size: 0.9rem; border-left: 1px solid var(--line);
+  }
+
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label {
+    cursor: pointer;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    font-size: 0.92rem;
+    line-height: 1.2;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .seg label:hover { border-color: var(--accent); }
+  .seg input:checked + label {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+    font-weight: 700;
+  }
+  .seg input:focus-visible + label { outline: 3px solid var(--accent-soft); outline-offset: 2px; }
+
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .range-val { font-variant-numeric: tabular-nums; font-weight: 700; }
+
+  /* Result panel */
+  .result {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+    display: grid;
+    gap: 20px;
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 16px);
+  }
+  @media (max-width: 760px) { .result { position: static; } }
+  .headline { display: flex; gap: 20px; align-items: flex-end; }
+  .jug {
+    flex: 0 0 72px;
+    height: 140px;
+    border: 3px solid var(--ink);
+    border-top-width: 0;
+    border-radius: 0 0 14px 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .jug .fill {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(180deg, var(--water) 0%, var(--water-deep) 100%);
+    height: 0%;
+    transition: height .6s cubic-bezier(.2,.8,.2,1);
+  }
+  .jug .tick {
+    position: absolute; left: 0; width: 12px; height: 2px; background: var(--ink); opacity: .5;
+  }
+  .big {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(3rem, 9vw, 4.2rem);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .big small { font-size: 0.4em; font-weight: 500; letter-spacing: 0; color: var(--muted); margin-left: 4px; }
+  .sub { color: var(--muted); margin-top: 6px; }
+
+  .glasses-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .glasses-head strong { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .glasses-head span { font-variant-numeric: tabular-nums; font-size: 0.9rem; color: var(--muted); }
+  .glasses { display: flex; flex-wrap: wrap; gap: 6px; }
+  .glass {
+    width: 30px; height: 40px;
+    border: 2px solid var(--muted);
+    border-top: 0;
+    border-radius: 0 0 6px 6px;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    clip-path: polygon(0 0, 100% 0, 88% 100%, 12% 100%);
+  }
+  .glass::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 0;
+    background: var(--water); transition: height .25s;
+  }
+  .glass[aria-pressed="true"] { border-color: var(--water-deep); }
+  .glass[aria-pressed="true"]::after { height: 85%; }
+  .glass:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .glass:hover { border-color: var(--accent); }
+
+  .breakdown { margin: 0; padding: 0; list-style: none; display: grid; gap: 0; border-top: 1px solid var(--line); }
+  .breakdown li {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 0.95rem;
+  }
+  .breakdown li span:last-child { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+  .breakdown li.total span { color: var(--accent); }
+
+  .note { font-size: 0.85rem; color: var(--muted); margin: 0; }
+  .note.warn { color: var(--warn); }
+
+  footer { font-size: 0.82rem; color: var(--muted); max-width: 70ch; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .jug .fill, .glass::after, .seg label { transition: none; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>How much water today?</h1>
+    <p>Enter a few details about yourself and your day. The estimate updates as you go.</p>
+  </header>
+
+  <div class="layout">
+    <form id="form" novalidate>
+      <fieldset>
+        <legend>Weight</legend>
+        <div class="row">
+          <div class="num">
+            <input id="weight" type="number" inputmode="decimal" min="20" max="300" step="0.5" value="70" aria-label="Weight">
+            <span class="unit" id="weightUnit">kg</span>
+          </div>
+          <div class="seg" role="radiogroup" aria-label="Weight unit">
+            <input type="radio" name="unit" id="u-kg" value="kg" checked><label for="u-kg">kg</label>
+            <input type="radio" name="unit" id="u-lb" value="lb"><label for="u-lb">lb</label>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Age</legend>
+        <div class="num" style="max-width: 200px;">
+          <input id="age" type="number" inputmode="numeric" min="14" max="110" step="1" value="32" aria-label="Age">
+          <span class="unit">years</span>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Sex</legend>
+        <div class="seg">
+          <input type="radio" name="sex" id="s-f" value="f"><label for="s-f">Female</label>
+          <input type="radio" name="sex" id="s-m" value="m" checked><label for="s-m">Male</label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <label class="lbl" for="exercise">Exercise today: <span class="range-val" id="exerciseVal">45 min</span></label>
+        <input id="exercise" type="range" min="0" max="240" step="15" value="45">
+      </fieldset>
+
+      <fieldset>
+        <legend>Exercise intensity</legend>
+        <div class="seg">
+          <input type="radio" name="intensity" id="i-light" value="light"><label for="i-light">Light (walk, yoga)</label>
+          <input type="radio" name="intensity" id="i-mod" value="moderate" checked><label for="i-mod">Moderate (jog, bike)</label>
+          <input type="radio" name="intensity" id="i-hard" value="hard"><label for="i-hard">Hard (running, HIIT)</label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Weather today</legend>
+        <div class="seg">
+          <input type="radio" name="weather" id="w-cool" value="cool"><label for="w-cool">Cool, under 15 °C</label>
+          <input type="radio" name="weather" id="w-mild" value="mild" checked><label for="w-mild">Mild</label>
+          <input type="radio" name="weather" id="w-hot" value="hot"><label for="w-hot">Hot, 28 °C+</label>
+          <input type="radio" name="weather" id="w-humid" value="humid"><label for="w-humid">Hot and humid</label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Anything else today?</legend>
+        <div class="seg">
+          <input type="checkbox" id="x-altitude" value="altitude"><label for="x-altitude">High altitude (2500 m+)</label>
+          <input type="checkbox" id="x-sick" value="sick"><label for="x-sick">Fever or stomach bug</label>
+          <input type="checkbox" id="x-alcohol" value="alcohol"><label for="x-alcohol">Drinking alcohol</label>
+          <input type="checkbox" id="x-pregnant" value="pregnant"><label for="x-pregnant">Pregnant</label>
+          <input type="checkbox" id="x-breastfeeding" value="breastfeeding"><label for="x-breastfeeding">Breastfeeding</label>
+        </div>
+      </fieldset>
+    </form>
+
+    <section class="result" aria-live="polite">
+      <div class="headline">
+        <div class="jug" aria-hidden="true"><div class="fill" id="fill"></div></div>
+        <div>
+          <div class="big"><span id="liters">2.6</span><small>litres</small></div>
+          <div class="sub" id="subline">to drink today, about 10 glasses of 250 ml</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="glasses-head">
+          <strong>Tap a glass when you drink it</strong>
+          <span id="progress">0 of 10</span>
+        </div>
+        <div class="glasses" id="glasses"></div>
+      </div>
+
+      <ul class="breakdown" id="breakdown"></ul>
+
+      <p class="note" id="warn" hidden></p>
+      <p class="note">Food usually covers another 20% of your water needs, so this number is what to drink. Pale yellow urine is a good sign you are on track.</p>
+    </section>
+  </div>
+
+  <footer>
+    This is a rough everyday estimate, not medical advice. Based on about 30–40 ml per kg of body weight (less with age), plus common sports-medicine guidance of roughly 0.4–0.8 L extra per hour of exercise. People with heart or kidney conditions, or anyone told to limit fluids, should follow their doctor's advice instead.
+  </footer>
+</div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const GLASS_ML = 250;
+  const LB_PER_KG = 2.20462;
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  const today = new Date().toISOString().slice(0, 10);
+  const drunkKey = "water-drunk-" + today;
+  let drunk = parseInt(store.get(drunkKey) || "0", 10) || 0;
+
+  // Restore saved inputs
+  try {
+    const saved = JSON.parse(store.get("water-inputs") || "null");
+    if (saved) {
+      for (const [id, v] of Object.entries(saved)) {
+        const el = $(id);
+        if (!el) continue;
+        if (el.type === "radio" || el.type === "checkbox") el.checked = v;
+        else el.value = v;
+      }
+    }
+  } catch (e) {}
+
+  function unit() { return document.querySelector('input[name="unit"]:checked').value; }
+  function radio(name) { return document.querySelector('input[name="' + name + '"]:checked').value; }
+
+  function mlPerKg(age) {
+    if (age < 18) return 40;
+    if (age <= 30) return 38;
+    if (age <= 55) return 35;
+    if (age <= 65) return 32;
+    return 30;
+  }
+
+  function calc() {
+    let w = parseFloat($("weight").value);
+    const age = parseInt($("age").value, 10);
+    if (!isFinite(w) || w <= 0) w = unit() === "kg" ? 70 : 154;
+    const kg = unit() === "kg" ? w : w / LB_PER_KG;
+    const a = isFinite(age) && age > 0 ? age : 30;
+
+    const items = [];
+    const base = kg * mlPerKg(a);
+    items.push(["Base need (" + Math.round(kg) + " kg × " + mlPerKg(a) + " ml, age " + a + ")", base]);
+
+    const mins = parseInt($("exercise").value, 10);
+    const perHour = { light: 400, moderate: 600, hard: 800 }[radio("intensity")];
+    if (mins > 0) items.push(["Exercise, " + mins + " min", perHour * mins / 60]);
+
+    const weather = { cool: -150, mild: 0, hot: 500, humid: 800 }[radio("weather")];
+    if (weather) items.push([weather < 0 ? "Cool weather" : "Heat", weather]);
+
+    if ($("x-altitude").checked) items.push(["High altitude", 500]);
+    if ($("x-sick").checked) items.push(["Fever or stomach bug", 500]);
+    if ($("x-alcohol").checked) items.push(["Alcohol", 250]);
+    if ($("x-pregnant").checked) items.push(["Pregnancy", 300]);
+    if ($("x-breastfeeding").checked) items.push(["Breastfeeding", 700]);
+
+    let total = items.reduce((s, i) => s + i[1], 0);
+    // Sensible floor for adults
+    const floor = radio("sex") === "f" ? 1600 : 2000;
+    if (total < floor) {
+      items.push(["Minimum for adults", floor - total]);
+      total = floor;
+    }
+    return { total, items, kg, age: a };
+  }
+
+  function fmtMl(ml) {
+    const sign = ml < 0 ? "−" : "+";
+    return sign + Math.round(Math.abs(ml) / 10) * 10 + " ml";
+  }
+
+  function render() {
+    // Unit label
+    $("weightUnit").textContent = unit();
+    $("exerciseVal").textContent = $("exercise").value + " min";
+
+    const r = calc();
+    const liters = Math.round(r.total / 100) / 10;
+    const glasses = Math.ceil(r.total / GLASS_ML);
+
+    $("liters").textContent = liters.toFixed(1);
+    $("subline").textContent = "to drink today, about " + glasses + " glasses of 250 ml";
+    $("fill").style.height = Math.min(100, (r.total / 5000) * 100) + "%";
+
+    const bd = $("breakdown");
+    bd.innerHTML = "";
+    r.items.forEach(([label, ml], i) => {
+      const li = document.createElement("li");
+      const a = document.createElement("span"); a.textContent = label;
+      const b = document.createElement("span"); b.textContent = i === 0 ? Math.round(ml / 10) * 10 + " ml" : fmtMl(ml);
+      li.append(a, b); bd.append(li);
+    });
+    const tot = document.createElement("li");
+    tot.className = "total";
+    tot.innerHTML = "<span>Total</span><span>" + liters.toFixed(1) + " L</span>";
+    bd.append(tot);
+
+    const warn = $("warn");
+    if (r.total > 4500) {
+      warn.hidden = false;
+      warn.className = "note warn";
+      warn.textContent = "That is a lot of water. Spread it out over the day and add electrolytes (a pinch of salt or a sports drink) on long, sweaty days.";
+    } else if (r.age < 14) {
+      warn.hidden = false;
+      warn.className = "note warn";
+      warn.textContent = "This calculator is built for teens and adults. Children's needs differ, so check with a paediatrician.";
+    } else {
+      warn.hidden = true;
+    }
+
+    // Glasses tracker
+    const g = $("glasses");
+    g.innerHTML = "";
+    if (drunk > glasses) drunk = glasses;
+    for (let i = 0; i < glasses; i++) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "glass";
+      b.setAttribute("aria-label", "Glass " + (i + 1));
+      b.setAttribute("aria-pressed", String(i < drunk));
+      b.addEventListener("click", () => {
+        drunk = (i < drunk) ? i : i + 1;
+        store.set(drunkKey, String(drunk));
+        render();
+      });
+      g.append(b);
+    }
+    $("progress").textContent = drunk + " of " + glasses + " · " + (drunk * GLASS_ML / 1000).toFixed(2).replace(/0$/, "") + " L";
+
+    // Persist inputs
+    const saved = {};
+    document.querySelectorAll("#form input").forEach((el) => {
+      if (!el.id) return;
+      saved[el.id] = (el.type === "radio" || el.type === "checkbox") ? el.checked : el.value;
+    });
+    store.set("water-inputs", JSON.stringify(saved));
+  }
+
+  // Convert the number when switching units
+  document.querySelectorAll('input[name="unit"]').forEach((el) => {
+    el.addEventListener("change", () => {
+      const w = parseFloat($("weight").value);
+      if (isFinite(w)) {
+        $("weight").value = el.value === "lb" ? Math.round(w * LB_PER_KG) : Math.round(w / LB_PER_KG * 2) / 2;
+      }
+      render();
+    });
+  });
+
+  $("form").addEventListener("input", render);
+  $("form").addEventListener("change", render);
+  $("form").addEventListener("submit", (e) => e.preventDefault());
+
+  // Tick marks on the jug (every litre up to 5 L)
+  const jug = document.querySelector(".jug");
+  for (let l = 1; l < 5; l++) {
+    const t = document.createElement("div");
+    t.className = "tick";
+    t.style.bottom = (l / 5 * 100) + "%";
+    jug.append(t);
+  }
+
+  render();
+})();
+</script>
