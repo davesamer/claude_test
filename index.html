@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Daily Water Planner</title>
 <meta name="description" content="Estimate how much water to drink today from your weight, age, activity, weather and life stage.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -48,7 +53,10 @@
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px); background: var(--bg); }
   body {
+    margin: 0;
     background: var(--bg);
     color: var(--ink);
     font-family: var(--body);
@@ -232,7 +240,8 @@
     .jug .fill, .glass::after, .seg label { transition: none; }
   }
 </style>
-
+</head>
+<body>
 <div class="wrap">
   <header>
     <h1>How much water today?</h1>
@@ -469,7 +478,7 @@
       });
       g.append(b);
     }
-    $("progress").textContent = drunk + " of " + glasses + " · " + (drunk * GLASS_ML / 1000).toFixed(2).replace(/0$/, "") + " L";
+    $("progress").textContent = drunk + " of " + glasses + " · " + parseFloat((drunk * GLASS_ML / 1000).toFixed(2)) + " L";
 
     // Persist inputs
     const saved = {};
@@ -507,3 +516,5 @@
   render();
 })();
 </script>
+</body>
+</html>
